@@ -75,7 +75,7 @@ cd your-repo
 db_password = "your-strong-password"
 ```
 
-> ⚠️ Never commit `terraform.tfvars` to GitHub — add it to `.gitignore`
+>  Never commit `terraform.tfvars` to GitHub — add it to `.gitignore`
 
 ### 3. Configure AWS credentials
 
@@ -183,7 +183,7 @@ mysql -h <rds-endpoint> -u admin -pYourPassword -e "SHOW TABLES;" studentapp
 terraform destroy
 ```
 
-> ⚠️ `skip_final_snapshot = true` is set — all RDS data will be permanently deleted on destroy.
+>  `skip_final_snapshot = true` is set — all RDS data will be permanently deleted on destroy.
 
 ---
 
