@@ -65,8 +65,7 @@ Public Subnet (ap-south-1a)
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/your-repo.git
-cd your-repo
+git clone https://github.com/prateekgajbar/Terraform-Project.git
 ```
 
 ### 2. Create terraform.tfvars
