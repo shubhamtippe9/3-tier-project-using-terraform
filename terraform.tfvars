@@ -1,1 +1,1 @@
-db_password = "Ryzen123"
+db_password = "Your-Key-Name"
