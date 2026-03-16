@@ -2,11 +2,10 @@ provider "aws" {
   region = var.region
 }
 
-# ----------------
+
 # VPC
-# ----------------
 resource "aws_vpc" "my-vpc" {
-  cidr_block           = var.mumbai_vpc_cidr
+  cidr_block           = var.my_vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
 
@@ -15,9 +14,7 @@ resource "aws_vpc" "my-vpc" {
   }
 }
 
-# ----------------
 # Subnets
-# ----------------
 resource "aws_subnet" "public_subnet" {
   vpc_id                  = aws_vpc.my-vpc.id
   cidr_block              = var.public_cidr_block
@@ -40,9 +37,7 @@ resource "aws_subnet" "private_subnet" {
   }
 }
 
-# ----------------
 # Internet Gateway
-# ----------------
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.my-vpc.id
 
@@ -67,7 +62,6 @@ resource "aws_nat_gateway" "nat" {
   depends_on = [aws_internet_gateway.igw]
 }
 
-# ----------------
 # Route Tables
 # ----------------
 # Public Route Table
@@ -104,9 +98,7 @@ resource "aws_route_table_association" "private_assoc" {
   route_table_id = aws_route_table.private.id
 }
 
-# ----------------
 # Security Groups
-# ----------------
 
 resource "aws_security_group" "ec2_sg" {
   name        = var.security_group_name
@@ -167,9 +159,7 @@ resource "aws_security_group" "rds_sg" {
   tags = { Name = "rds-sg" }
 }
 
-# ----------------
 # RDS Subnet Group
-# ----------------
 resource "aws_db_subnet_group" "my_db_subnet" {
   name       = "my-db-subnet-group"
   subnet_ids = [
@@ -180,9 +170,7 @@ resource "aws_db_subnet_group" "my_db_subnet" {
   tags = { Name = "db-subnet-group" }
 }
 
-# ----------------
 # RDS Instance
-# ----------------
 resource "aws_db_instance" "my_db" {
   identifier             = "mariadb-instance"
   allocated_storage      = 10
@@ -191,7 +179,7 @@ resource "aws_db_instance" "my_db" {
   engine_version         = "10.6"
   instance_class         = "db.t4g.micro"
   db_name                = "studentapp"
-  username               = "admin"
+  username               = "shubham"
   password               = var.db_password
   db_subnet_group_name   = aws_db_subnet_group.my_db_subnet.name
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
@@ -199,9 +187,7 @@ resource "aws_db_instance" "my_db" {
   skip_final_snapshot    = true
 }
 
-# ----------------
 # Public EC2 (Tomcat / app server)
-# ----------------
 resource "aws_instance" "ec2_public" {
   ami                    = var.image_instance
   instance_type          = var.instance_type
@@ -209,52 +195,7 @@ resource "aws_instance" "ec2_public" {
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   subnet_id              = aws_subnet.public_subnet.id
 
-  user_data = <<-EOF
-#!/bin/bash
-
-
-yum install java-17-amazon-corretto python3 mariadb105 -y
-
-cd /opt
-curl -O https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.115/bin/apache-tomcat-9.0.115.tar.gz
-tar -xzf apache-tomcat-9.0.115.tar.gz
-
-/opt/apache-tomcat-9.0.115/bin/catalina.sh start
-
-cd /opt/apache-tomcat-9.0.115/webapps/
-curl -O https://s3-us-west-2.amazonaws.com/studentapi-cit/student.war
-
-cd /opt/apache-tomcat-9.0.115/lib/
-curl -O https://s3-us-west-2.amazonaws.com/studentapi-cit/mysql-connector.jar
-
-echo "Waiting for database to accept connections..."
-until mysqladmin ping -h ${aws_db_instance.my_db.address} -u admin -p${var.db_password} --silent 2>/dev/null; do
-  echo "DB not ready yet, retrying in 10s..."
-  sleep 10
-done
-echo "Database is up."
-
-python3 - <<PYTHON
-f = open('/opt/apache-tomcat-9.0.115/conf/context.xml', 'r')
-lines = f.readlines()
-f.close()
-
-resource = '    <Resource name="jdbc/TestDB" auth="Container" type="javax.sql.DataSource" maxTotal="500" maxIdle="30" maxWaitMillis="1000" username="admin" password="${var.db_password}" driverClassName="com.mysql.jdbc.Driver" url="jdbc:mysql://${aws_db_instance.my_db.address}:3306/studentapp?useUnicode=yes&amp;characterEncoding=utf8"/>\n'
-
-for i, line in enumerate(lines):
-    if '</Context>' in line:
-        lines.insert(i, resource)
-        break
-
-f = open('/opt/apache-tomcat-9.0.115/conf/context.xml', 'w')
-f.writelines(lines)
-f.close()
-PYTHON
-
-/opt/apache-tomcat-9.0.115/bin/catalina.sh stop
-/opt/apache-tomcat-9.0.115/bin/catalina.sh start
-
-EOF
+  user_data = file("userdata.sh")
 
   tags = {
 
@@ -262,9 +203,7 @@ EOF
   }
 }
 
-# ----------------
 # Private EC2 (DB seed / init server)
-# ----------------
 resource "aws_instance" "ec2_private" {
   ami                    = var.image_instance
   instance_type          = var.instance_type
@@ -272,55 +211,10 @@ resource "aws_instance" "ec2_private" {
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   subnet_id              = aws_subnet.private_subnet.id
 
-  user_data = <<-EOF
-#!/bin/bash
-yum update -y
-yum install mariadb105 -y
-echo "Waiting for database to accept connections..."
-until mysqladmin ping -h ${aws_db_instance.my_db.address} -u admin -p${var.db_password} --silent 2>/dev/null; do
-  echo "DB not ready yet, retrying in 10s..."
-  sleep 10
-done
-echo "Database is up."
-
-mysql -h ${aws_db_instance.my_db.address} -u admin -p${var.db_password} <<MYSQL
-CREATE DATABASE IF NOT EXISTS studentapp;
-USE studentapp;
-CREATE TABLE IF NOT EXISTS students(
-student_id INT NOT NULL AUTO_INCREMENT,
-student_name VARCHAR(100) NOT NULL,
-student_addr VARCHAR(100) NOT NULL,
-student_age VARCHAR(3) NOT NULL,
-student_qual VARCHAR(20) NOT NULL,
-student_percent VARCHAR(10) NOT NULL,
-student_year_passed VARCHAR(10) NOT NULL,
-PRIMARY KEY (student_id)
-);
-MYSQL
-
-echo "Database and table created."
-
-EOF
+  user_data = file("userdata1.sh")
 
   tags = {
 
     Name = var.private_instance_name
   }
 }
-
-
-output "ec2_public_ip" {
-  description = "Public IP of the Tomcat app server"
-  value       = aws_instance.ec2_public.public_ip
-}
-
-output "rds_endpoint" {
-  description = "RDS MariaDB endpoint"
-  value       = aws_db_instance.my_db.address
-}
-
-output "app_url" {
-  description = "Tomcat app URL"
-  value       = "http://${aws_instance.ec2_public.public_ip}:8080/student"
-}
-

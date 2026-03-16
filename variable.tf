@@ -1,12 +1,12 @@
 variable "region" {
   description = "AWS Region"
   type        = string
-  default     = "ap-south-1"
+  default     = "us-east-1"
 }
 
 # ---------------- VPC ----------------
 
-variable "mumbai_vpc_cidr" {
+variable "my_vpc_cidr" {
   description = "CIDR block for VPC"
   type        = string
   default     = "10.0.0.0/16"
@@ -29,7 +29,7 @@ variable "public_cidr_block" {
 variable "public_available_zone" {
   description = "Public subnet availability zone"
   type        = string
-  default     = "ap-south-1a"
+  default     = "us-east-1a"
 }
 
 variable "public_subnet_name" {
@@ -49,7 +49,7 @@ variable "private_cidr_block" {
 variable "private_available_zone" {
   description = "Private subnet availability zone"
   type        = string
-  default     = "ap-south-1b"
+  default     = "us-east-1b"
 }
 
 variable "private_subnet_name" {
@@ -94,7 +94,7 @@ variable "db_password" {
 variable "image_instance" {
   description = "AMI ID for EC2 instance"
   type        = string
-  default     = "ami-051a31ab2f4d498f5"
+  default     = "ami-02dfbd4ff395f2a1b"
 }
 
 variable "instance_type" {
@@ -106,7 +106,7 @@ variable "instance_type" {
 variable "instance_key" {
   description = "EC2 Key Pair Name"
   type        = string
-  default     = "Ryzen"
+  default     = "north"
 }
 
 # ---------------- Instance Names ----------------
