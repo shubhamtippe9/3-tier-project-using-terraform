@@ -75,7 +75,7 @@ resource "aws_route_table" "NAT-tb" {
   }
 
   tags = {
-    Name = my-nat_route_table_name
+    Name = "nat-rt"
   }
 }
 
