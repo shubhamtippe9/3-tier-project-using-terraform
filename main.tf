@@ -164,7 +164,7 @@ resource "aws_db_instance" "my_db" {
   engine_version = "10.6"
   instance_class = "db.t4g.micro"
   db_name  = "studentapp"
-  username = "arya"
+  username = "shubham"
   password = var.db_password
 
   db_subnet_group_name   = aws_db_subnet_group.my_db_subnet.name
@@ -206,7 +206,7 @@ f = open('/opt/apache-tomcat-9.0.115/conf/context.xml', 'r')
 lines = f.readlines()
 f.close()
 
-resource = '    <Resource name="jdbc/TestDB" auth="Container" type="javax.sql.DataSource" maxTotal="500" maxIdle="30" maxWaitMillis="1000" username="arya" password="${var.db_password}" driverClassName="com.mysql.jdbc.Driver" url="jdbc:mysql://${aws_db_instance.my_db.address}:3306/studentapp?useUnicode=yes&amp;characterEncoding=utf8"/>\n'
+resource = '    <Resource name="jdbc/TestDB" auth="Container" type="javax.sql.DataSource" maxTotal="500" maxIdle="30" maxWaitMillis="1000" username="shubham" password="${var.db_password}" driverClassName="com.mysql.jdbc.Driver" url="jdbc:mysql://${aws_db_instance.my_db.address}:3306/studentapp?useUnicode=yes&amp;characterEncoding=utf8"/>\n'
 
 for i, line in enumerate(lines):
     if '</Context>' in line:
