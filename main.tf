@@ -197,7 +197,7 @@ curl -O https://s3-us-west-2.amazonaws.com/studentapi-cit/student.war
 cd /opt/apache-tomcat-9.0.115/lib/
 curl -O https://s3-us-west-2.amazonaws.com/studentapi-cit/mysql-connector.jar
 
-until mysqladmin ping -h ${aws_db_instance.my_db.address} -u arya -p${var.db_password} --silent 2>/dev/null; do
+until mysqladmin ping -h ${aws_db_instance.my_db.address} -u shubham -p${var.db_password} --silent 2>/dev/null; do
   sleep 10
 done
 
@@ -237,11 +237,11 @@ resource "aws_instance" "db-instance" {
 #!/bin/bash
 yum update -y
 yum install mariadb105 -y
-until mysqladmin ping -h ${aws_db_instance.my_db.address} -u arya -p${var.db_password} --silent 2>/dev/null; do
+until mysqladmin ping -h ${aws_db_instance.my_db.address} -u shubham -p${var.db_password} --silent 2>/dev/null; do
   sleep 10
 done
 
-mysql -h ${aws_db_instance.my_db.address} -u arya -p${var.db_password} <<MYSQL
+mysql -h ${aws_db_instance.my_db.address} -u shubham -p${var.db_password} <<MYSQL
 CREATE DATABASE IF NOT EXISTS studentapp;
 USE studentapp;
 CREATE TABLE IF NOT EXISTS students(
