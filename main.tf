@@ -63,7 +63,7 @@ resource "aws_nat_gateway" "my-ngw" {
   subnet_id     = aws_subnet.mysubnet-1.id
 
   tags = {
-    Name = my-nat
+    Name = "my-nat"
   }
 }
 

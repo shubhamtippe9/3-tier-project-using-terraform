@@ -1,6 +1,6 @@
 output "ec2_public_ip" {
   description = "Public IP of the Tomcat app server"
-  value       = aws_instance.ec2_public.public_ip
+  value       = aws_instance.Ec2Instance.public_ip
 }
 
 output "rds_endpoint" {
@@ -10,5 +10,5 @@ output "rds_endpoint" {
 
 output "app_url" {
   description = "Tomcat app URL"
-  value       = "http://${aws_instance.ec2_public.public_ip}:8080/student"
+  value       = "http://${aws_instance.Ec2Instance.public_ip}:8080/student"
 }
