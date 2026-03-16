@@ -67,11 +67,16 @@ variable "igw_name" {
 }
 
 # ---------------- Security Group ----------------
-
+variable "security_group_name_1" {
+  default = "ec2-sg"
+}
+variable "description_sg_1" {
+  default = "allow ssh,http"
+}
 variable "security_group_name" {
   description = "Security Group Name"
   type        = string
-  default     = "ec2-sg"
+  default     = "vpc-sg"
 }
 
 variable "description_sg" {
