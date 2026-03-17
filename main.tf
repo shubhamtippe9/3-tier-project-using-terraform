@@ -184,29 +184,37 @@ resource "aws_instance" "Ec2Instance" {
     # user_data = file("userdata.sh")
     user_data = <<-EOF
 #!/bin/bash
+
+# Install packages
 yum install java-17-amazon-corretto python3 mariadb105 -y
+
+# Download Tomcat
 cd /opt
 curl -O https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.115/bin/apache-tomcat-9.0.115.tar.gz
 tar -xzf apache-tomcat-9.0.115.tar.gz
 
-/opt/apache-tomcat-9.0.115/bin/catalina.sh start
-
+# Download WAR file
 cd /opt/apache-tomcat-9.0.115/webapps/
 curl -O https://s3-us-west-2.amazonaws.com/studentapi-cit/student.war
 
+# Download MySQL Connector (UPDATED)
 cd /opt/apache-tomcat-9.0.115/lib/
-curl -O https://s3-us-west-2.amazonaws.com/studentapi-cit/mysql-connector.jar
+curl -O https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.33/mysql-connector-java-8.0.33.jar
+mv mysql-connector-java-8.0.33.jar mysql-connector.jar
 
-until mysqladmin ping -h ${aws_db_instance.my_db.address} -u shubham -p${var.db_password} --silent 2>/dev/null; do
-  sleep 10
+# WAIT for DB + TABLE (IMPORTANT FIX)
+until mysql -h ${aws_db_instance.my_db.address} -u shubham -p${var.db_password} -e "USE studentapp; SHOW TABLES;" 2>/dev/null; do
+  echo "Waiting for DB and tables..."
+  sleep 15
 done
 
+# Update context.xml
 python3 - <<PYTHON
 f = open('/opt/apache-tomcat-9.0.115/conf/context.xml', 'r')
 lines = f.readlines()
 f.close()
 
-resource = '    <Resource name="jdbc/TestDB" auth="Container" type="javax.sql.DataSource" maxTotal="500" maxIdle="30" maxWaitMillis="1000" username="shubham" password="${var.db_password}" driverClassName="com.mysql.jdbc.Driver" url="jdbc:mysql://${aws_db_instance.my_db.address}:3306/studentapp?useUnicode=yes&amp;characterEncoding=utf8"/>\n'
+resource = '    <Resource name="jdbc/TestDB" auth="Container" type="javax.sql.DataSource" maxTotal="500" maxIdle="30" maxWaitMillis="1000" username="shubham" password="${var.db_password}" driverClassName="com.mysql.cj.jdbc.Driver" url="jdbc:mysql://${aws_db_instance.my_db.address}:3306/studentapp?useSSL=false&allowPublicKeyRetrieval=true"/>\n'
 
 for i, line in enumerate(lines):
     if '</Context>' in line:
@@ -218,9 +226,11 @@ f.writelines(lines)
 f.close()
 PYTHON
 
-/opt/apache-tomcat-9.0.115/bin/catalina.sh stop
-/opt/apache-tomcat-9.0.115/bin/catalina.sh start
-    EOF
+# Start Tomcat (ONLY ONCE - FIXED)
+cd /opt/apache-tomcat-9.0.115/bin/
+./catalina.sh start
+
+EOF
     tags = {
       Name = var.public_instance_name
     }
@@ -233,17 +243,23 @@ resource "aws_instance" "db-instance" {
     vpc_security_group_ids = [aws_security_group.my-sg-1.id]
     subnet_id = aws_subnet.mysubnet-2.id
     # user_data = file("userdata_2.sh")
-    user_data = <<-EOF
+   user_data = <<-EOF
 #!/bin/bash
+
 yum update -y
 yum install mariadb105 -y
-until mysqladmin ping -h ${aws_db_instance.my_db.address} -u shubham -p${var.db_password} --silent 2>/dev/null; do
+
+# Wait for RDS
+until mysqladmin ping -h ${aws_db_instance.my_db.address} -u shubham -p${var.db_password} --silent; do
+  echo "Waiting for RDS..."
   sleep 10
 done
 
+# Create DB + Table
 mysql -h ${aws_db_instance.my_db.address} -u shubham -p${var.db_password} <<MYSQL
 CREATE DATABASE IF NOT EXISTS studentapp;
 USE studentapp;
+
 CREATE TABLE IF NOT EXISTS students(
 student_id INT NOT NULL AUTO_INCREMENT,
 student_name VARCHAR(100) NOT NULL,
@@ -255,7 +271,8 @@ student_year_passed VARCHAR(10) NOT NULL,
 PRIMARY KEY (student_id)
 );
 MYSQL
-    EOF
+
+EOF
     tags = {
       Name = var.private_instance_name
     }
