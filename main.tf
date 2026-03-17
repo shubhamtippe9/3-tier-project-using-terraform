@@ -183,40 +183,43 @@ resource "aws_instance" "Ec2Instance" {
     subnet_id = aws_subnet.mysubnet-1.id
     # user_data = file("userdata.sh")
     user_data = <<-EOF
-#!/bin/bash
+    #!/bin/bash
 
-# Install packages
+# Update & install packages
 yum update -y
 yum install java-17-amazon-corretto python3 mariadb105 wget -y
 
-# Download Tomcat
+# Download & extract Tomcat
 cd /opt
 wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.115/bin/apache-tomcat-9.0.115.tar.gz
 tar -xzf apache-tomcat-9.0.115.tar.gz
 
-# Start Tomcat once to create folders
+# Start Tomcat once (creates folders), then stop
 cd /opt/apache-tomcat-9.0.115/bin/
 ./catalina.sh start
 sleep 20
 ./catalina.sh stop
 
-# Download WAR as ROOT (FIX FOR 404)
+# Clean default apps (VERY IMPORTANT)
 cd /opt/apache-tomcat-9.0.115/webapps/
+rm -rf ROOT ROOT.war docs examples manager host-manager
+
+# Download your application and set as ROOT (FIXES 404 + Tomcat page issue)
 wget https://s3-us-west-2.amazonaws.com/studentapi-cit/student.war
 mv student.war ROOT.war
 
-# Download MySQL Connector (LATEST)
+# Add MySQL connector (LATEST)
 cd /opt/apache-tomcat-9.0.115/lib/
 wget https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.33/mysql-connector-java-8.0.33.jar
 mv mysql-connector-java-8.0.33.jar mysql-connector.jar
 
-# Wait for DB + TABLE
+# Wait for RDS + DB + Table
 until mysql -h ${aws_db_instance.my_db.address} -u shubham -p${var.db_password} -e "USE studentapp; SHOW TABLES;" 2>/dev/null; do
   echo "Waiting for DB and tables..."
   sleep 15
 done
 
-# Update context.xml (FIXED DRIVER + URL)
+# Configure DB connection in Tomcat
 python3 - <<PYTHON
 f = open('/opt/apache-tomcat-9.0.115/conf/context.xml', 'r')
 lines = f.readlines()
@@ -234,10 +237,9 @@ f.writelines(lines)
 f.close()
 PYTHON
 
-# Start Tomcat FINAL
+# Final Tomcat start
 cd /opt/apache-tomcat-9.0.115/bin/
 ./catalina.sh start
-
 EOF
     tags = {
       Name = var.public_instance_name
