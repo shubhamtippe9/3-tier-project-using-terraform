@@ -186,29 +186,37 @@ resource "aws_instance" "Ec2Instance" {
 #!/bin/bash
 
 # Install packages
-yum install java-17-amazon-corretto python3 mariadb105 -y
+yum update -y
+yum install java-17-amazon-corretto python3 mariadb105 wget -y
 
 # Download Tomcat
 cd /opt
-curl -O https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.115/bin/apache-tomcat-9.0.115.tar.gz
+wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.115/bin/apache-tomcat-9.0.115.tar.gz
 tar -xzf apache-tomcat-9.0.115.tar.gz
 
-# Download WAR file
-cd /opt/apache-tomcat-9.0.115/webapps/
-curl -O https://s3-us-west-2.amazonaws.com/studentapi-cit/student.war
+# Start Tomcat once to create folders
+cd /opt/apache-tomcat-9.0.115/bin/
+./catalina.sh start
+sleep 20
+./catalina.sh stop
 
-# Download MySQL Connector (UPDATED)
+# Download WAR as ROOT (FIX FOR 404)
+cd /opt/apache-tomcat-9.0.115/webapps/
+wget https://s3-us-west-2.amazonaws.com/studentapi-cit/student.war
+mv student.war ROOT.war
+
+# Download MySQL Connector (LATEST)
 cd /opt/apache-tomcat-9.0.115/lib/
-curl -O https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.33/mysql-connector-java-8.0.33.jar
+wget https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.33/mysql-connector-java-8.0.33.jar
 mv mysql-connector-java-8.0.33.jar mysql-connector.jar
 
-# WAIT for DB + TABLE (IMPORTANT FIX)
+# Wait for DB + TABLE
 until mysql -h ${aws_db_instance.my_db.address} -u shubham -p${var.db_password} -e "USE studentapp; SHOW TABLES;" 2>/dev/null; do
   echo "Waiting for DB and tables..."
   sleep 15
 done
 
-# Update context.xml
+# Update context.xml (FIXED DRIVER + URL)
 python3 - <<PYTHON
 f = open('/opt/apache-tomcat-9.0.115/conf/context.xml', 'r')
 lines = f.readlines()
@@ -226,7 +234,7 @@ f.writelines(lines)
 f.close()
 PYTHON
 
-# Start Tomcat (ONLY ONCE - FIXED)
+# Start Tomcat FINAL
 cd /opt/apache-tomcat-9.0.115/bin/
 ./catalina.sh start
 
